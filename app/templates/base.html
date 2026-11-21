@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ static('style.css') }}">
+  <script src="{{ static('monthpicker.js') }}" defer></script>
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+<header>
+  <strong>{{ app_name }}</strong>
+  {% if principal %}
+  <nav>
+    <a href="/dyspozycje">Dyspozycje</a>
+    <a href="/grafiki">Grafiki</a>
+    <a href="/zamiany">Zamiany</a>
+    {% if principal.is_admin %}
+    <a href="/admin">Panel admina</a>
+    <a href="/users">Użytkownicy</a>
+    {% else %}
+    <a href="/konto">Moje konto</a>
+    {% endif %}
+  </nav>
+  <span class="who">{{ principal.name }}{% if principal.is_admin %} (admin){% endif %}
+    <form method="post" action="/logout" style="display:inline"><button class="link" style="color:inherit">wyloguj</button></form>
+  </span>
+  {% endif %}
+</header>
+<main>
+  {% if error %}<div class="alert err">{{ error }}</div>{% endif %}
+  {% if msg %}<div class="alert ok">{{ msg }}</div>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

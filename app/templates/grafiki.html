@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Grafiki{% endblock %}
+{% block content %}
+<h1>Grafiki</h1>
+{% if not principal.is_admin %}
+<p class="hint">Widzisz grafiki opublikowane przez administratora: aktualny i poprzednie.</p>
+{% endif %}
+{% if schedules %}
+<table>
+  <tr><th>Miesiąc</th><th>Wersja</th><th>Utworzony</th><th>Braki</th><th>Status</th><th></th></tr>
+  {% for s in schedules %}
+  <tr class="{{ 'curmonth' if s.month == cur }}">
+    <td><b>{{ s.month }}</b>{% if s.month == cur %} <span class="hint">(następny miesiąc)</span>{% endif %}</td>
+    <td>#{{ s.id }}</td>
+    <td>{{ s.created_at|localdt('%d.%m.%Y %H:%M') }}</td>
+    <td>{{ s.report.gaps }}</td>
+    <td>{% if s.published %}<span class="badge">opublikowany</span>{% else %}<span class="hint">roboczy (widzi tylko admin)</span>{% endif %}</td>
+    <td><a href="/schedules/{{ s.id }}">Otwórz</a> · <a href="/schedules/{{ s.id }}/xlsx">Excel</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="hint">Nie ma jeszcze opublikowanych grafików.</p>
+{% endif %}
+{% endblock %}

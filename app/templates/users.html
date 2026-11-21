@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Użytkownicy{% endblock %}
+{% block content %}
+<h1>Użytkownicy</h1>
+<p class="hint">Kierownik jest domyślnie włączony. Min/max godzin to wartości domyślne, używane, gdy osoba nie poda własnych w pliku.
+  „Jedyne miejsce pracy” (only_job): zaznaczone = ustawowy limit łącznego czasu pracy nie zmienia grafiku; odznaczone = osoba musi
+  w formularzu podać godziny w innych miejscach, a jej max h w tym grafiku zostanie obniżony do limitu ustawowego.
+  Dane logowania (login, hasło) i kontaktu (e-mail) są w osobnej tabeli powiązanej z użytkownikiem. Login domyślnie imię.nazwisko bez polskich znaków; hasło ustawiasz tutaj;
+  zmienić je może też sam w „Moje konto”. Osoba bez hasła nie może się zalogować.
+  Saldo to skumulowana uciążliwość (noce, święta) z poprzednich miesięcy: wyższe saldo = mniej trudnych zmian w kolejnym grafiku.</p>
+
+<section>
+  <h2>Dodaj</h2>
+  <form method="post" action="/users" class="row">
+    <input name="first_name" placeholder="Imię" required>
+    <input name="last_name" placeholder="Nazwisko" required>
+    <label><input type="checkbox" name="can_drive"> kierowca</label>
+    <label><input type="checkbox" name="can_lead" checked> kierownik</label>
+    <label title="Zaznaczone = to jedyne miejsce pracy; odznacz, jeśli osoba pracuje też gdzie indziej"><input type="checkbox" name="only_job" checked> jedyne miejsce pracy</label>
+    <label>min h <input type="number" name="min_h" value="{{ def_min }}" min="0" style="width:5em"></label>
+    <label>max h <input type="number" name="max_h" value="{{ def_max }}" min="0" style="width:5em"></label>
+    <label title="Puste = imię.nazwisko bez polskich znaków">login <input name="login" pattern="[a-z0-9._\-]{3,80}" placeholder="auto z imienia i nazwiska" style="width:12em"></label>
+    <label>e-mail <input type="email" name="email" placeholder="do kontaktu" style="width:13em"></label>
+    <label title="Min. 8 znaków. Puste = osoba nie może się zalogować, dopóki nie ustawisz hasła">hasło <input type="text" name="password" minlength="8" autocomplete="off" placeholder="min. 8 znaków"></label>
+    <button class="primary">Dodaj</button>
+  </form>
+</section>
+
+<section>
+  <h2>Lista ({{ users|length }})</h2>
+  {% for u in users %}<form method="post" action="/users/{{ u.id }}" id="f{{ u.id }}"></form>{% endfor %}
+  <table>
+    <tr><th>Imię</th><th>Nazwisko</th><th>Kierowca</th><th>Kierownik</th><th title="only_job">Jedyne miejsce pracy</th><th>Min h</th><th>Max h</th><th>Saldo</th><th>Aktywny</th><th>Login</th><th>E-mail</th><th>Nowe hasło</th><th></th></tr>
+    {% for u in users %}
+    <tr>
+      <td><input form="f{{ u.id }}" name="first_name" value="{{ u.first_name }}" required></td>
+      <td><input form="f{{ u.id }}" name="last_name" value="{{ u.last_name }}" required></td>
+      <td><input form="f{{ u.id }}" type="checkbox" name="can_drive" {{ 'checked' if u.can_drive }}></td>
+      <td><input form="f{{ u.id }}" type="checkbox" name="can_lead" {{ 'checked' if u.can_lead }}></td>
+      <td><input form="f{{ u.id }}" type="checkbox" name="only_job" {{ 'checked' if u.only_job }}></td>
+      <td><input form="f{{ u.id }}" type="number" name="min_h" value="{{ u.min_h }}" min="0" style="width:5em"></td>
+      <td><input form="f{{ u.id }}" type="number" name="max_h" value="{{ u.max_h }}" min="0" style="width:5em"></td>
+      <td><input form="f{{ u.id }}" type="number" step="0.1" name="saldo" value="{{ u.saldo }}" style="width:5.5em"></td>
+      <td><input form="f{{ u.id }}" type="checkbox" name="active" {{ 'checked' if u.active }}></td>
+      <td><input form="f{{ u.id }}" name="login" value="{{ u.account.login if u.account else '' }}" pattern="[a-z0-9._\-]{3,80}" style="width:11em">
+        {% if not u.account or not u.account.password_hash %}<br><small class="err-text">brak hasła</small>{% endif %}</td>
+      <td><input form="f{{ u.id }}" type="email" name="email" value="{{ (u.account.email if u.account else '') or '' }}" style="width:13em"></td>
+      <td><input form="f{{ u.id }}" type="text" name="new_password" minlength="8" autocomplete="off" placeholder="puste = bez zmiany" style="width:11em"></td>
+      <td class="nowrap">
+        <button form="f{{ u.id }}">Zapisz</button>
+        <form method="post" action="/users/{{ u.id }}/delete" style="display:inline"
+              onsubmit="return confirm('Usunąć tego użytkownika razem z jego dyspozycjami i kontem?')"><button class="link">usuń</button></form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

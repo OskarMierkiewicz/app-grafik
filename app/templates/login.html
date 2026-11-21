@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Logowanie · {{ app_name }}{% endblock %}
+{% block bodyclass %}login{% endblock %}
+{% block content %}
+<div class="login-logo"><img src="{{ static('luxmed-logo.png') }}" alt="Grupa LUXMED" width="800" height="277"></div>
+<section style="max-width:380px;margin:24px auto 48px">
+  <h1>Logowanie</h1>
+  <form method="post" action="/login" style="display:grid;gap:12px">
+    <label>Login <input name="login" autocomplete="username" autofocus required style="width:100%"></label>
+    <label>Hasło <input name="password" type="password" autocomplete="current-password" required style="width:100%"></label>
+    <button class="primary">Zaloguj</button>
+  </form>
+  <p class="hint">Login to imię.nazwisko małymi literami bez polskich znaków (np. <code>lukasz.zak</code>).
+    Hasło ustawia administrator.</p>
+</section>
+{% include "_scene.html" %}
+{% endblock %}

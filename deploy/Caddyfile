@@ -1,0 +1,10 @@
+# Caddy sam załatwia certyfikat HTTPS dla adresu z SITE_HOST i przekierowuje HTTP na HTTPS.
+{$SITE_HOST} {
+	encode gzip
+	reverse_proxy web:8000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+	}
+}

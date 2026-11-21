@@ -1,0 +1,13 @@
+login;osoba;rola;godziny min-max;jedyne miejsce pracy
+oskar.mierkiewicz;Oskar Mierkiewicz;kierownik;48-60;tak
+patrycja.telecz;Patrycja Telesz;kierownik;84-192;nie
+jakub.lipski;Jakub Lipski;kierownik;108-168;tak
+krzysztof.jablonski;Krzysztof Jabłoński;kierowca + kierownik;84-192;tak
+konstantinos.tsounis;Konstantinos Tsounis;kierowca + kierownik;108-168;nie
+piotr.zabielski;Piotr Zabielski;kierowca + kierownik;72-192;nie
+sebastian.robaczewski;Sebastian Robaczewski;kierowca + kierownik;84-192;nie
+adam.jaszczuk;Adam Jaszczuk;kierowca + kierownik;72-144;nie
+jakub.sirocki;Jakub Sirocki;kierowca + kierownik;96-168;nie
+krzysztof.sprengel;Krzysztof Sprengel;kierowca + kierownik;96-192;nie
+wojciech.samul;Wojciech Samul;kierowca + kierownik;72-144;nie
+ewa.samul;Ewa Samul;kierowca + kierownik;72-192;nie

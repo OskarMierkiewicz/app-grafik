@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Zamiany{% endblock %}
+{% block content %}
+<h1>Zamiany zmian</h1>
+
+{% if not months %}
+<p class="hint">Zamiany są możliwe dopiero w opublikowanym grafiku. Nie ma jeszcze żadnego.</p>
+{% else %}
+<form method="get" action="/zamiany" class="row">
+  <label>Grafik
+    <select name="month" onchange="this.form.submit()">
+      {% for m in months %}<option value="{{ m }}" {{ 'selected' if m == month }}>{{ m }}</option>{% endfor %}
+    </select></label>
+  <noscript><button>Pokaż</button></noscript>
+</form>
+{% endif %}
+
+{% if sch %}
+{% macro swap_text(sw) %}
+  <b>{{ sw.requester.full_name }}</b> oddaje {{ shift_label(sch.month, sw.give_day, sw.give_shift) }}{% if sw.take_day %},
+  <b>{{ sw.partner.full_name }}</b> oddaje w zamian {{ shift_label(sch.month, sw.take_day, sw.take_shift) }}{% else %},
+  <b>{{ sw.partner.full_name }}</b> przejmuje ją (bez zmiany w zamian){% endif %}
+{% endmacro %}
+{% macro status_badge(sw) %}
+  {% if sw.status == 'pending' %}<span class="badge warnb">czeka na akceptację</span>
+  {% elif sw.status == 'applied' %}<span class="badge">wprowadzona{% if sw.by_admin %} przez admina{% endif %}</span>
+  {% elif sw.status == 'rejected' %}<span class="badge errb">odrzucona</span>
+  {% elif sw.status == 'cancelled' %}<span class="badge errb">anulowana</span>
+  {% else %}<span class="badge errb">niewykonalna</span>{% endif %}
+{% endmacro %}
+
+<p class="hint">Zamiana wymaga akceptacji obu osób (autor prośby akceptuje ją, składając). Po zamianie na każdej zmianie nadal musi być
+  kierowca i kierownik, a nikt nie może przekroczyć swojego maksimum godzin. Nie można zamieniać zmian z przeszłości.</p>
+
+{% if principal.is_admin %}
+<section>
+  <h2>Wprowadź zamianę (administrator, bez akceptacji)</h2>
+  <form method="get" action="/zamiany" class="row">
+    <input type="hidden" name="month" value="{{ month }}">
+    <label>Osoba A (oddaje)
+      <select name="a" required><option value="">wybierz…</option>
+        {% for pp in people %}<option value="{{ pp.uid }}" {{ 'selected' if a == pp.uid }}>{{ pp.name }}</option>{% endfor %}</select></label>
+    <label>Osoba B (przejmuje)
+      <select name="b" required><option value="">wybierz…</option>
+        {% for pp in people %}<option value="{{ pp.uid }}" {{ 'selected' if b == pp.uid }}>{{ pp.name }}</option>{% endfor %}</select></label>
+    <button>Dalej: wybierz zmiany</button>
+  </form>
+  {% if a and b %}
+  <form method="post" action="/zamiany/admin" class="row">
+    <input type="hidden" name="schedule_id" value="{{ sch.id }}">
+    <input type="hidden" name="a_uid" value="{{ a }}"><input type="hidden" name="b_uid" value="{{ b }}">
+    <label>A oddaje
+      <select name="give" required>{% for d, s in a_shifts %}<option value="{{ d }}-{{ s }}">{{ shift_label(sch.month, d, s) }}</option>{% endfor %}</select></label>
+    <label>B oddaje w zamian
+      <select name="take"><option value="">nic (B tylko przejmuje)</option>
+        {% for d, s in b_shifts %}<option value="{{ d }}-{{ s }}">{{ shift_label(sch.month, d, s) }}</option>{% endfor %}</select></label>
+    <button class="primary">Wprowadź zamianę</button>
+  </form>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Wszystkie zamiany w grafiku {{ sch.month }}</h2>
+  {% if swaps %}
+  <table>
+    <tr><th>#</th><th>Zamiana</th><th>Status</th><th>Data</th><th></th></tr>
+    {% for sw in swaps %}
+    <tr><td>{{ sw.id }}</td><td>{{ swap_text(sw) }}{% if sw.note %}<br><small class="hint">{{ sw.note }}</small>{% endif %}</td>
+      <td>{{ status_badge(sw) }}</td><td class="hint">{{ sw.created_at|localdt('%d.%m %H:%M') }}</td>
+      <td>{% if sw.status == 'pending' %}<form method="post" action="/zamiany/{{ sw.id }}/cancel"><button class="link">anuluj</button></form>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="hint">Brak zamian.</p>{% endif %}
+</section>
+
+{% else %}
+{% set incoming = swaps|selectattr('status', 'equalto', 'pending')|selectattr('partner_id', 'equalto', principal.user.id)|list %}
+{% if incoming %}
+<section>
+  <h2>Prośby do Ciebie ({{ incoming|length }})</h2>
+  <table>
+    {% for sw in incoming %}
+    <tr>
+      <td>{{ swap_text(sw) }}
+        {% if check[sw.id].ok %}
+          {% for w in check[sw.id].warnings %}<br><small class="warn-text">⚠ {{ w }}</small>{% endfor %}
+        {% else %}<br><small class="err-text">Niewykonalne: {{ check[sw.id].error }}</small>{% endif %}
+      </td>
+      <td class="nowrap">
+        <form method="post" action="/zamiany/{{ sw.id }}/accept" style="display:inline"><button class="primary" {{ 'disabled' if not check[sw.id].ok }}>Akceptuję</button></form>
+        <form method="post" action="/zamiany/{{ sw.id }}/reject" style="display:inline"><button>Odrzuć</button></form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+
+<section>
+  <h2>Poproś o zamianę</h2>
+  {% include "_legend.html" %}
+  {% if not me_in %}
+    <p class="hint">Nie masz zmian w tym grafiku.</p>
+  {% else %}
+  <form method="get" action="/zamiany" class="row">
+    <input type="hidden" name="month" value="{{ month }}">
+    <label>Z kim
+      <select name="partner" required><option value="">wybierz osobę…</option>
+        {% for pp in people if pp.uid != principal.user.id %}<option value="{{ pp.uid }}" {{ 'selected' if partner == pp.uid }}>{{ pp.name }} ({{ pp.role|role_name }} {{ pp.role|role_icon }})</option>{% endfor %}</select></label>
+    <button>Dalej: wybierz zmiany</button>
+  </form>
+  {% if partner %}
+  <form method="post" action="/zamiany/new" class="row">
+    <input type="hidden" name="schedule_id" value="{{ sch.id }}"><input type="hidden" name="partner_id" value="{{ partner }}">
+    <label>Oddaję
+      <select name="give" required>
+        {% for d, s in my_shifts %}<option value="{{ d }}-{{ s }}">{{ shift_label(sch.month, d, s) }}</option>{% endfor %}</select></label>
+    <label>Biorę w zamian
+      <select name="take"><option value="">nic (druga osoba tylko przejmuje)</option>
+        {% for d, s in partner_shifts %}<option value="{{ d }}-{{ s }}">{{ shift_label(sch.month, d, s) }}</option>{% endfor %}</select></label>
+    <button class="primary">Wyślij prośbę</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</section>
+
+<section>
+  <h2>Moje zamiany w grafiku {{ sch.month }}</h2>
+  {% if swaps %}
+  <table>
+    <tr><th>Zamiana</th><th>Status</th><th>Data</th><th></th></tr>
+    {% for sw in swaps %}
+    <tr><td>{{ swap_text(sw) }}{% if sw.note %}<br><small class="hint">{{ sw.note }}</small>{% endif %}</td>
+      <td>{{ status_badge(sw) }}</td><td class="hint">{{ sw.created_at|localdt('%d.%m %H:%M') }}</td>
+      <td>{% if sw.status == 'pending' and sw.requester_id == principal.user.id %}<form method="post" action="/zamiany/{{ sw.id }}/cancel"><button class="link">anuluj</button></form>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="hint">Brak zamian.</p>{% endif %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

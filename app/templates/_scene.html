@@ -1,0 +1,29 @@
+{# Dekoracja strony logowania: karetka przejeżdża przez ekran. Czysty CSS/SVG, bez bibliotek; wyłączana przy prefers-reduced-motion. #}
+<div class="scene" aria-hidden="true">
+  <div class="skyline"></div>
+  <div class="amb">
+    <svg class="vehicle" width="200" viewBox="0 0 230 110" overflow="visible" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="gb"><stop offset="0" stop-color="#2f7be0" stop-opacity=".75"/><stop offset="1" stop-color="#2f7be0" stop-opacity="0"/></radialGradient>
+        <radialGradient id="gr"><stop offset="0" stop-color="#ff4d3d" stop-opacity=".75"/><stop offset="1" stop-color="#ff4d3d" stop-opacity="0"/></radialGradient>
+        <linearGradient id="beam" x1="0" x2="1"><stop offset="0" stop-color="#ffe58a" stop-opacity=".55"/><stop offset="1" stop-color="#ffe58a" stop-opacity="0"/></linearGradient>
+      </defs>
+      <ellipse cx="115" cy="102" rx="98" ry="5" fill="#0f172a" opacity=".12"/>
+      <polygon class="beam" points="224,66 275,54 275,84 224,74" fill="url(#beam)"/>
+      <rect x="8" y="22" width="150" height="62" rx="8" fill="#fff" stroke="#c7cfda" stroke-width="2"/>
+      <path d="M158 28 L180 28 L200 52 L220 58 L224 66 L224 80 L220 84 L158 84 Z" fill="#fff" stroke="#c7cfda" stroke-width="2" stroke-linejoin="round"/>
+      <polygon points="166,34 178,34 194,52 166,52" fill="#cfe8ff" stroke="#9db9d6" stroke-width="1.5"/>
+      <rect x="12" y="60" width="208" height="7" fill="#34b343"/><rect x="12" y="68" width="208" height="3" fill="#1e63b5"/>
+      <g fill="#34b343"><rect x="77" y="28" width="12" height="26"/><rect x="70" y="35" width="26" height="12"/></g>
+      <line x1="120" y1="24" x2="120" y2="82" stroke="#c7cfda" stroke-width="1.5"/>
+      <rect x="206" y="80" width="18" height="5" rx="2" fill="#98a2b0"/>
+      <rect x="218" y="64" width="6" height="8" rx="2" fill="#ffd54a"/>
+      <rect x="118" y="13" width="34" height="9" rx="3" fill="#2b3340"/>
+      <circle class="glow g1" cx="128" cy="17" r="20" fill="url(#gb)"/><circle class="glow g2" cx="143" cy="17" r="20" fill="url(#gr)"/>
+      <rect class="lt lt1" x="121" y="14.5" width="13" height="6" rx="2" fill="#1e63b5"/><rect class="lt lt2" x="136" y="14.5" width="13" height="6" rx="2" fill="#e5392f"/>
+      <g class="wheel"><circle cx="52" cy="86" r="15" fill="#2b3340"/><circle cx="52" cy="86" r="7" fill="#cbd2db"/><line x1="52" y1="72" x2="52" y2="100" stroke="#2b3340" stroke-width="2.5"/><line x1="38" y1="86" x2="66" y2="86" stroke="#2b3340" stroke-width="2.5"/></g>
+      <g class="wheel"><circle cx="176" cy="86" r="15" fill="#2b3340"/><circle cx="176" cy="86" r="7" fill="#cbd2db"/><line x1="176" y1="72" x2="176" y2="100" stroke="#2b3340" stroke-width="2.5"/><line x1="162" y1="86" x2="190" y2="86" stroke="#2b3340" stroke-width="2.5"/></g>
+    </svg>
+  </div>
+  <div class="road"></div>
+</div>

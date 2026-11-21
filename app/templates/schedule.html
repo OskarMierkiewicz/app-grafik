@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Grafik {{ rep.month }}{% endblock %}
+{% block content %}
+<h1>Grafik {{ rep.month }} <small>#{{ sch.id }}</small></h1>
+
+<div class="row">
+  <a class="btn primary" href="/schedules/{{ sch.id }}/xlsx">Pobierz Excel</a>
+  {% if principal.is_admin %}
+  <a class="btn" href="/admin?month={{ rep.month }}">← Panel admina</a>
+  <a class="btn" href="/schedules/{{ sch.id }}/edycja">Edytuj ręcznie</a>
+  {% if not sch.published %}
+  <form method="post" action="/schedules/{{ sch.id }}/publish"
+        onsubmit="return confirm('Opublikować ten grafik? Zobaczą go wszyscy użytkownicy, a poprzednio opublikowany na ten miesiąc zostanie wycofany.')">
+    <button class="primary">Opublikuj dla użytkowników</button>
+  </form>
+  {% else %}
+  <span class="badge">opublikowany</span>
+  <form method="post" action="/schedules/{{ sch.id }}/unpublish"><button>Wycofaj publikację</button></form>
+  {% endif %}
+  {% if not sch.saldo_applied %}
+  <form method="post" action="/schedules/{{ sch.id }}/apply-saldo"
+        onsubmit="return confirm('Zapisać saldo uciążliwości do bazy? Zrób to tylko dla ostatecznego grafiku miesiąca.')">
+    <button>Zatwierdź saldo</button>
+  </form>
+  {% else %}<span class="badge">saldo zatwierdzone</span>{% endif %}
+  <form method="post" action="/schedules/{{ sch.id }}/delete" onsubmit="return confirm('Usunąć ten grafik?')"><button class="link">usuń</button></form>
+  {% else %}
+  <a class="btn" href="/grafiki">← Grafiki</a>
+  {% if sch.published %}<a class="btn" href="/zamiany?month={{ rep.month }}">Zamiany zmian</a>{% endif %}
+  {% endif %}
+</div>
+{% if applied_swaps %}
+<details><summary>Zamiany wprowadzone w tym grafiku ({{ applied_swaps|length }})</summary>
+  <ul>{% for sw in applied_swaps %}
+    <li>{{ sw.requester.full_name }}: {{ shift_label(rep.month, sw.give_day, sw.give_shift) }} → {{ sw.partner.full_name }}{% if sw.take_day %}, w zamian {{ shift_label(rep.month, sw.take_day, sw.take_shift) }}{% endif %}
+      <small class="hint">({{ sw.decided_at|localdt('%d.%m %H:%M') }}{% if sw.by_admin %}, admin{% endif %})</small></li>
+  {% endfor %}</ul>
+</details>
+{% endif %}
+
+{% if principal.is_admin and edits %}
+<details><summary>Ręczne zmiany administratora ({{ edits|length }})</summary>
+  <ul>{% for e in edits %}
+    <li>{{ 'dodano' if e.action == 'add' else 'zdjęto' }}: {{ e.user.full_name }}, {{ shift_label(rep.month, e.day, e.shift) }}
+      <small class="hint">({{ e.created_at|localdt('%d.%m %H:%M') }}){% if e.note %} {{ e.note }}{% endif %}</small></li>
+  {% endfor %}</ul>
+</details>
+{% endif %}
+
+{% if rep.gaps %}
+<div class="alert err">
+  <b>Braki w obsadzie: {{ rep.gaps }}</b>
+  <ul>
+    {% for row in rep.slots %}{% for s in ['D','N'] %}{% if row[s].problems %}
+    <li>dzień {{ row.d }} {{ s }}: {{ row[s].problems|join(', ') }}</li>
+    {% endif %}{% endfor %}{% endfor %}
+  </ul>
+</div>
+{% else %}
+<div class="alert ok">Wszystkie zmiany obsadzone.</div>
+{% endif %}
+{% if principal.is_admin %}
+{% for l in rep.pre if l.startswith('UWAGA: suma minimów') %}
+<div class="alert warn"><b>Minima nie mają szans się zmieścić.</b> {{ l }} Brakujące godziny są rozłożone możliwie równo
+  między osoby. Żeby wszyscy mieli minimum, obniż minima, dodaj osoby albo zwiększ zapotrzebowanie.</div>
+{% endfor %}
+{% for l in rep.pre if l.startswith('UWAGA: suma maksimów') %}
+<div class="alert warn"><b>Za mało godzin do obsadzenia grafiku.</b> {{ l }}</div>
+{% endfor %}
+{% for p in rep.people if p.below_min %}
+<div class="alert warn">{{ p.name }}: {{ p.hours }} h (min {{ p.min_h }}), {{ p.notes|join('; ') }}</div>
+{% endfor %}
+{% set limited = rep.people|selectattr('law_limited')|list %}
+{% if limited %}
+<div class="alert warn"><b>Limit ustawowy (łączny czas pracy) obniżył max godzin:</b>
+  <ul>{% for p in limited %}<li>{{ p.name }}: {{ p.notes[0] }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if rep.missing %}<p><b>Bez dyspozycji (nieuwzględnieni):</b> {{ rep.missing|join(', ') }}</p>{% endif %}
+{% endif %}
+
+<h2>Grafik</h2>
+<div class="scroll">
+<table class="grid">
+  <tr><th class="name">Osoba</th>
+    {% for x in rep.days %}<th class="{{ 'off' if x.off }}" title="{{ x.hol }}">{{ x.d }}<br><small>{{ x.wd }}{{ '*' if x.hol }}</small></th>{% endfor %}
+    <th>h</th>{% if principal.is_admin %}<th>min</th><th>max</th>{% endif %}</tr>
+  {% for p in rep.people %}
+  <tr>
+    <td class="name">{{ p.name }} <span title="{{ p.role|role_name }}">{{ p.role|role_icon }}</span></td>
+    {% for x in rep.days %}{% set v = p.assign.get(x.d|string, '') %}<td class="c {{ v }}{{ ' offc' if x.off and not v }}">{{ v }}</td>{% endfor %}
+    <td class="{{ 'warnc' if p.below_min and principal.is_admin }}">{{ p.hours }}</td>{% if principal.is_admin %}<td>{{ p.min_h }}</td><td>{{ p.max_h }}</td>{% endif %}
+  </tr>
+  {% endfor %}
+  {% for s in ['D','N'] %}
+  <tr><td class="name"><b>Obsada {{ s }}</b></td>
+    {% for row in rep.slots %}<td class="c {{ 'gap' if row[s].problems else 'okc' }}{{ ' offc' if rep.days[loop.index0].off and not row[s].problems }}" title="{{ row[s].problems|join(', ') }}">{{ 'BRAK' if row[s].problems else 'OK' }}</td>{% endfor %}
+    <td colspan="{{ 3 if principal.is_admin else 1 }}"></td></tr>
+  {% endfor %}
+</table>
+</div>
+
+{% include "_legend.html" %}
+
+<h2>Dzień po dniu</h2>
+<table>
+  <tr><th>Dzień</th><th>D (7-19)</th><th>N (19-7)</th></tr>
+  {% for x, row in rep.days|zip(rep.slots) %}
+  <tr class="{{ 'offrow' if x.off }}">
+    <td>{{ x.d }} {{ x.wd }}{% if x.hol %} <small>({{ x.hol }})</small>{% endif %}</td>
+    {% for s in ['D','N'] %}
+    <td class="{{ 'gap' if row[s].problems }}">{{ row[s].people|join(', ')|role_tags }}{% if row[s].problems %} <b>BRAK: {{ row[s].problems|join(', ') }}</b>{% endif %}</td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+
+{% if principal.is_admin %}
+<h2>Podsumowanie osób</h2>
+<table>
+  <tr><th>Osoba</th><th>Rola</th><th>Godziny</th><th>Min–max</th><th>Zmian</th><th>Dób</th><th>Nocy</th><th>Wolne/święta</th><th>Pkt</th><th>Oczekiwane</th><th>Saldo</th><th>Uwagi</th></tr>
+  {% for p in rep.people %}
+  <tr>
+    <td>{{ p.name }}</td><td>{{ p.role|role_full }}</td><td class="{{ 'warnc' if p.below_min }}">{{ p.hours }}</td><td>{{ p.min_h }}–{{ p.max_h }}</td>
+    <td>{{ p.n }}</td><td>{{ p.doby }}</td><td>{{ p.nights }}</td><td>{{ p.offs }}</td><td>{{ p.b }}</td><td>{{ p.expected }}</td>
+    <td>{{ p.saldo_old }} → {{ p.saldo_new }}</td><td>{{ p.notes|join('; ') }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<details>
+  <summary>Diagnostyka</summary>
+  <p>Status solvera: {{ rep.status }}, seed losowania: {{ rep.seed }}. Etapy (kolejność ważności):</p>
+  <ol>{% for st in rep.stages %}<li>{{ st.name }}: <b>{{ st.value }}</b> <small>({{ st.status }})</small></li>{% endfor %}</ol>
+  <ul>{% for l in rep.pre %}<li>{{ l }}</li>{% endfor %}</ul>
+</details>
+{% else %}
+{% set mine = rep.people|selectattr('uid', 'equalto', principal.user.id)|list %}
+{% if mine %}
+<h2>Twoje podsumowanie</h2>
+<table>
+  <tr><th>Godziny</th><th>Zmian</th><th>Dób</th><th>Nocy</th><th>Wolne/święta</th></tr>
+  <tr><td>{{ mine[0].hours }}</td><td>{{ mine[0].n }}</td><td>{{ mine[0].doby }}</td><td>{{ mine[0].nights }}</td><td>{{ mine[0].offs }}</td></tr>
+</table>
+{% endif %}
+{% endif %}
+{% endblock %}

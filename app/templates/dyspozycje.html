@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_month_picker.html" import month_picker %}
+{% block title %}Dyspozycje {{ month }}{% endblock %}
+{% block content %}
+<h1>Dyspozycje na {{ month }}</h1>
+
+<form method="get" action="/dyspozycje" class="row">
+  <span class="mp-label">Miesiąc</span> {{ month_picker(month, marks) }}
+  <button class="mp-hide-js">Pokaż</button>
+</form>
+
+<div class="alert {{ 'err' if lock else 'ok' }}">
+  {% if lock %}
+    <b>Składanie dyspozycji zablokowane:</b> {{ lock }}.
+    {% if not principal.is_admin %}Jeśli musisz coś zmienić, napisz do administratora: może wgrać Twój plik mimo blokady. Dyspozycje na kolejny miesiąc możesz złożyć już teraz (zmień miesiąc u góry).{% endif %}
+  {% else %}
+    Dyspozycję na {{ month }} możesz składać i podmieniać <b>do {{ deadline.strftime('%d.%m.%Y') }}</b> (włącznie).
+    Od następnego dnia jest blokada, a także wcześniej, jeśli administrator wygeneruje grafik.
+  {% endif %}
+</div>
+
+{% if published %}
+<p><a class="btn primary" href="/schedules/{{ published.id }}">Zobacz grafik na {{ month }}</a></p>
+{% endif %}
+
+<div class="cols">
+<div class="stack">
+{% if principal.user %}
+<section>
+  <h2>Moja dyspozycja</h2>
+  {% if mine %}
+    <p class="ok-text">✓ Masz złożoną dyspozycję na {{ month }} ({{ mine.avail|length }} dni dostępności,
+      ostatnia zmiana {{ mine.updated_at|localdt('%d.%m.%Y %H:%M') }}).</p>
+  {% else %}
+    <p>Nie złożyłeś jeszcze dyspozycji na {{ month }}.</p>
+  {% endif %}
+  {% if result %}<div class="alert {{ 'ok' if result.ok else 'err' }}">{{ result.msg }}</div>{% endif %}
+  <div class="row">
+    <a class="btn" href="/moj-formularz?month={{ month }}">Pobierz mój formularz ({{ month }}.xlsx)</a>
+  </div>
+  {% if not lock %}
+  <form method="post" action="/moja-dyspozycja" enctype="multipart/form-data" class="row">
+    <input type="file" name="file" accept=".xlsx" required>
+    <button class="primary">Wgraj plik</button>
+  </form>
+  <p class="hint">Plik musi nazywać się <b>RRRR-MM.xlsx</b> (np. <code>{{ month }}.xlsx</code>), bo z nazwy wiadomo, którego miesiąca
+    dotyczy. Pobrany formularz ma już poprawną nazwę oraz Twoje imię i nazwisko. Ponowne wgranie zastępuje poprzednią dyspozycję.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if principal.is_admin %}
+<section>
+  <h2>Wgrywanie plików</h2>
+  <p>Jako administrator wgrywasz pliki (także hurtem i mimo blokady terminu) w panelu administratora.</p>
+  <a class="btn primary" href="/admin?month={{ month }}">Panel admina: wgraj dyspozycje na {{ month }}</a>
+</section>
+{% endif %}
+
+<section class="stats">
+  <h2>📊 Statystyki: {{ stats.month_name }}</h2>
+  <div class="stat">
+    <div class="stat-ico">🕒</div>
+    <div>
+      <div class="stat-num">{{ stats.total_hours }} h</div>
+      <div class="stat-cap">do obsadzenia w {{ stats.month_loc }}</div>
+      <div class="hint">{{ stats.ndays }} dni × 2 osoby × 24 h</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-ico">🎉</div>
+    <div>
+      <div class="stat-num">{{ stats.holiday_hours }} h</div>
+      <div class="stat-cap">godzin świątecznych (bez niedziel)</div>
+      <div class="hint">
+        {% if stats.holidays %}{{ stats.holidays|length }} {{ 'dzień' if stats.holidays|length == 1 else 'dni' }}:
+          {% for h in stats.holidays %}{{ h.d }} {{ h.mon }} ({{ h.wd }}) {{ h.name }}{{ ', ' if not loop.last }}{% endfor %}
+        {% else %}brak świąt poza niedzielami w tym miesiącu{% endif %}
+      </div>
+      {% if stats.sunday_holidays %}<div class="hint">Pominięte, bo wypadają w niedzielę:
+        {% for h in stats.sunday_holidays %}{{ h.d }} {{ h.mon }} {{ h.name }}{{ ', ' if not loop.last }}{% endfor %}</div>{% endif %}
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-ico">📬</div>
+    <div class="stat-wide">
+      <div class="stat-num">{{ stats.pct }}%</div>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ stats.pct }}"><span class="{{ 'full' if stats.pct == 100 }}" style="width:{{ stats.pct }}%"></span></div>
+      <div class="stat-cap">{{ stats.done }} z {{ stats.total }} osób złożyło dyspozycję</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<section>
+  <h2>Kto już złożył dyspozycję ({{ done }} z {{ total }})</h2>
+  <table>
+    <tr><th>Osoba</th><th>Dyspozycja na {{ month }}</th></tr>
+    {% for u, s in rows %}
+    <tr>
+      <td>{{ u.full_name }}</td>
+      <td>{% if s %}<span class="ok-text">✓ złożona</span> <span class="hint">({{ s.updated_at|localdt('%d.%m.%Y') }})</span>{% else %}<span class="hint">brak</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+</div>
+{% endblock %}

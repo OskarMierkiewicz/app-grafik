@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-grafik}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grafik}
+      POSTGRES_DB: ${POSTGRES_DB:-grafik}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-grafik}:${POSTGRES_PASSWORD:-grafik}@db:5432/${POSTGRES_DB:-grafik}
+      APP_NAME: ${APP_NAME:-Grafik - Lux Med Wileńska 44}
+      ADMIN_LOGIN: ${ADMIN_LOGIN:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      SECRET_KEY: ${SECRET_KEY:-}
+      SESSION_HTTPS_ONLY: ${SESSION_HTTPS_ONLY:-0}
+      SUBMISSION_DEADLINE_DAY: ${SUBMISSION_DEADLINE_DAY:-10}
+      TZ_NAME: ${TZ_NAME:-Europe/Warsaw}
+      LAW_ENABLED: ${LAW_ENABLED:-1}
+      LAW_EFFECTIVE_FROM: ${LAW_EFFECTIVE_FROM:-2027-01}
+      LAW_TOTAL_MAX_H: ${LAW_TOTAL_MAX_H:-320}
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:8000:8000"  # WEB_BIND=127.0.0.1: dostęp tylko z serwera (np. przez tunel SSH)
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dbdata:

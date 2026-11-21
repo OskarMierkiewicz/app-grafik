@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Edycja grafiku {{ rep.month }}{% endblock %}
+{% block content %}
+<h1>Ręczna edycja grafiku {{ rep.month }} <small>#{{ sch.id }}</small></h1>
+<div class="row">
+  <a class="btn" href="/schedules/{{ sch.id }}">← Grafik</a>
+  {% if sch.published %}<span class="badge">opublikowany: zmiany widzą od razu wszyscy użytkownicy</span>
+  {% else %}<span class="hint">grafik roboczy (widzi tylko admin)</span>{% endif %}
+</div>
+<p class="hint">Dodaj osobę do zmiany (<b>+</b>) albo zdejmij ją (<b>×</b>). Twarde zasady: na zmianie najwyżej 2 osoby, a przy dwóch musi być
+  kierowca i kierownik (nie dwóch kierowców bez kierownika ani dwóch kierowników). Zdjęcie osoby zostawia zmianę z brakiem (czerwona),
+  dopóki nie dodasz kogoś innego. Przekroczenie maksimum godzin, brak dostępności, N→D bez przerwy i spadek poniżej minimum
+  to tylko ostrzeżenia. Każda zmiana trafia do dziennika poniżej.</p>
+
+{% include "_legend.html" %}
+<div class="scroll">
+<table>
+  <tr><th>Dzień</th><th>D (7-19)</th><th>N (19-7)</th></tr>
+  {% for row in cells %}
+  <tr class="{{ 'offrow' if row.day.off }}">
+    <td class="nowrap">{{ row.day.d }} {{ row.day.wd }}{% if row.day.hol %} <small>({{ row.day.hol }})</small>{% endif %}</td>
+    {% for s in ['D', 'N'] %}
+    {% set c = row[s] %}
+    <td class="{{ 'gap' if c.problems }}">
+      {% for h in c.holders %}
+      <form method="post" action="/schedules/{{ sch.id }}/edit" style="display:inline">
+        <input type="hidden" name="uid" value="{{ h.uid }}"><input type="hidden" name="day" value="{{ row.day.d }}">
+        <input type="hidden" name="shift" value="{{ s }}"><input type="hidden" name="action" value="remove">
+        <span class="chip">{{ h.name }} <span title="{{ h.role|role_name }}">{{ h.role|role_icon }}</span>
+          <button class="link" title="Zdejmij z tej zmiany" onclick="return confirm('Zdjąć tę osobę ze zmiany?')">×</button></span>
+      </form>
+      {% endfor %}
+      {% if c.problems %}<b class="err-text"> BRAK: {{ c.problems|join(', ') }}</b>{% endif %}
+      <form method="post" action="/schedules/{{ sch.id }}/edit" class="row" style="margin:4px 0 0">
+        <input type="hidden" name="day" value="{{ row.day.d }}"><input type="hidden" name="shift" value="{{ s }}">
+        <input type="hidden" name="action" value="add">
+        <select name="uid" required style="max-width:15em"><option value="">dodaj osobę…</option>
+          {% for uid, name in c.options %}<option value="{{ uid }}">{{ name }}</option>{% endfor %}</select>
+        <button>+</button>
+      </form>
+    </td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+<h2>Dziennik ręcznych zmian</h2>
+{% if edits %}
+<table>
+  <tr><th>Kiedy</th><th>Zmiana</th><th>Osoba</th><th>Ostrzeżenia</th></tr>
+  {% for e in edits %}
+  <tr><td class="hint">{{ e.created_at|localdt('%d.%m %H:%M') }}</td>
+    <td>{{ 'dodano' if e.action == 'add' else 'zdjęto' }}: {{ shift_label(rep.month, e.day, e.shift) }}</td>
+    <td>{{ e.user.full_name }}</td><td class="warn-text">{{ e.note }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p class="hint">Brak ręcznych zmian.</p>{% endif %}
+{% endblock %}

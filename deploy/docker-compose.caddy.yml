@@ -1,0 +1,24 @@
+# Nakładka na docker-compose.yml: HTTPS przez Caddy (certyfikat Let's Encrypt dla SITE_HOST, np. 203-0-113-7.sslip.io).
+# Użycie: docker compose -f docker-compose.yml -f deploy/docker-compose.caddy.yml up -d --build
+services:
+  web:
+    environment:
+      FORWARDED_ALLOW_IPS: "*"   # za Caddy: prawdziwy adres klienta z X-Forwarded-For (limit prób logowania); port 8000 nie jest publiczny
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"      # potrzebny do wydania certyfikatu
+      - "443:443"
+    environment:
+      SITE_HOST: ${SITE_HOST:?ustaw SITE_HOST w .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:

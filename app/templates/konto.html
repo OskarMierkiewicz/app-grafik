@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Moje konto{% endblock %}
+{% block content %}
+<h1>Moje konto</h1>
+{% if principal.user %}
+<p>Zalogowany jako <b>{{ principal.name }}</b>, login: <code>{{ principal.user.account.login }}</code>.</p>
+<section style="max-width:420px">
+  <h2>E-mail do kontaktu</h2>
+  <form method="post" action="/konto/email" style="display:grid;gap:10px">
+    <label>Adres e-mail <input type="email" name="email" value="{{ principal.user.account.email or '' }}" style="width:100%"></label>
+    <button>Zapisz e-mail</button>
+  </form>
+</section>
+<section style="max-width:420px">
+  <h2>Zmiana hasła</h2>
+  <form method="post" action="/konto" style="display:grid;gap:10px">
+    <label>Obecne hasło <input type="password" name="current" autocomplete="current-password" required style="width:100%"></label>
+    <label>Nowe hasło (min. 8 znaków) <input type="password" name="new" autocomplete="new-password" required minlength="8" style="width:100%"></label>
+    <label>Powtórz nowe hasło <input type="password" name="repeat" autocomplete="new-password" required minlength="8" style="width:100%"></label>
+    <button class="primary">Zmień hasło</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}
