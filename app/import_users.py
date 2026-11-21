@@ -30,7 +30,7 @@ from sqlalchemy import select
 
 from . import auth
 from .db import SessionLocal, init_db
-from .models import DEFAULT_MAX_H, DEFAULT_MIN_H, ScheduleEdit, Submission, Swap, User, UserAccount
+from .models import DEFAULT_MAX_H, DEFAULT_MIN_H, STEP_H, ScheduleEdit, Submission, Swap, User, UserAccount
 
 ALIASES = {
     "login": {"login", "uzytkownik", "user"},
@@ -124,6 +124,9 @@ def parse(text: str):
                 continue
         if mn > mx:
             errors.append(f"wiersz {n} ({first} {last}): min godzin {mn} > max godzin {mx}")
+            continue
+        if mn % STEP_H or mx % STEP_H:
+            errors.append(f"wiersz {n} ({first} {last}): min i max godzin muszą być wielokrotnością {STEP_H} (np. 96-192), jest {mn}-{mx}")
             continue
         oj = plain(get("only_job"))
         only_job = not oj.startswith(("nie", "n", "false", "0")) if oj else True

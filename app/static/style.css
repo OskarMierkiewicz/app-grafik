@@ -129,3 +129,76 @@ body.login main { position:relative; z-index:1; padding-bottom:170px; }
 .cols > section table { width:100%; margin:0; }
 .cols > section td:first-child { width:55%; }
 @media (max-width:860px) { .stack { grid-template-rows:auto; } }
+
+/* kalendarz dyspozycji (klik: D → N → DN → brak) */
+section.mine { margin-bottom:16px; }
+.cal { display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:6px; max-width:620px; margin:8px 0 12px; }
+.cal-h { text-align:center; font-size:.8em; color:var(--muted); font-weight:600; }
+.cal-d { display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 2px; min-height:52px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; font:inherit; }
+.cal-d.off { background:#fff4e5; }
+.cal-n { font-size:.85em; color:var(--muted); }
+.cal-v { font-weight:700; min-height:1.2em; }
+.cal-d[data-v="D"] { background:#dbeafe; border-color:#3b82f6; }
+.cal-d[data-v="N"] { background:#e0e7ff; border-color:#6366f1; }
+.cal-d[data-v="DN"] { background:#dcfce7; border-color:#16a34a; }
+.cal-d:hover { border-color:var(--acc); }
+
+/* lewa kolumna: ostatni kafelek zawsze dociąga się do wysokości prawej kolumny (także gdy jest jedyny) */
+.stack { display:flex; flex-direction:column; grid-template-rows:none; }
+.stack > section:last-child { flex:1; }
+@media (max-width:860px) { .stack > section:last-child { flex:none; } }
+
+/* legenda i kalendarz dyspozycji */
+.legend { display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; padding:10px 14px; margin:4px 0 8px; background:#f6f8fb; border:1px solid var(--line); border-radius:12px; }
+.lg { display:inline-flex; align-items:center; gap:8px; font-size:.95em; }
+.chip { display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:26px; padding:0 8px; border-radius:8px; border:1px solid; font-style:normal; font-weight:700; font-size:.9em; }
+.chip.D, .cal-d[data-v="D"] { background:#dbeafe; border-color:#3b82f6; color:#1e3a8a; }
+.chip.N, .cal-d[data-v="N"] { background:#e0e7ff; border-color:#6366f1; color:#3730a3; }
+.chip.DN, .cal-d[data-v="DN"] { background:#dcfce7; border-color:#16a34a; color:#14532d; }
+.chip.off { background:#fff4e5; border-color:#f59e0b; min-width:26px; padding:0; }
+.cal-v { font-size:1.15em; min-height:1.3em; }
+.cal-hol { font-size:.62em; line-height:1.1; color:var(--muted); text-align:center; overflow:hidden; max-width:100%; }
+.cal-d { min-height:64px; }
+
+/* kafelek statystyk: wiersze rozkładają się równomiernie na całą wysokość, z większym oddechem */
+.stack > section.stats { display:flex; flex-direction:column; padding:22px 26px 14px; }
+.stats h2 { margin:0 0 6px; }
+.stats .stat { flex:1; align-items:center; gap:18px; padding:20px 0; }
+.stats h2 + .stat { padding-top:20px; }
+.stat-ico { font-size:2.3em; width:1.3em; text-align:center; }
+.stat-num { margin-bottom:4px; }
+.stat-cap { margin-bottom:4px; }
+.stats .hint { line-height:1.45; }
+.bar { height:12px; margin:10px 0; }
+@media (max-width:860px) { .stats .stat { flex:none; } }
+
+/* role: czytelne znaczniki zamiast emoji */
+.rb { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.72em; font-weight:600; line-height:1.5; vertical-align:middle; white-space:nowrap; border:1px solid transparent; }
+.rb.kd { background:#dbeafe; color:#1e3a8a; border-color:#93c5fd; }
+.rb.kr { background:#fef3c7; color:#78350f; border-color:#fcd34d; }
+.rb.kdo { background:#dcfce7; color:#14532d; border-color:#86efac; }
+.pc { display:inline-flex; align-items:center; gap:7px; margin:2px 6px 2px 0; padding:3px 6px 3px 10px; border:1px solid var(--line); border-radius:999px; background:#fff; white-space:nowrap; }
+.pc .pn { font-weight:500; }
+.pc .rb { font-size:.68em; padding:0 7px; }
+td.gap .pc { border-color:#fca5a5; }
+.offrow .pc { background:#fffaf2; }
+.daytable td:first-child, .daytable th:first-child { width:9.5em; white-space:nowrap; }
+.daytable tr.offrow td { background:#fff4e5; }
+.daytable td { padding-top:6px; padding-bottom:6px; }
+
+/* legenda ról: jedna cicha linia, bez ramki */
+.rlegend { display:flex; flex-wrap:wrap; gap:6px 22px; align-items:center; margin:10px 0 14px; padding:0; border:0; background:none; font-size:.85em; color:var(--muted); }
+.lgi { display:inline-flex; align-items:center; gap:6px; }
+.lgt { color:var(--muted); }
+
+/* kolor zamiast tekstu: kropka przy nazwisku (uprawnienia) i chip zmiany (rola na zmianie) */
+.rd { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:middle; border:1px solid transparent; }
+.rd.kd { background:#60a5fa; border-color:#2563eb; }
+.rd.kr { background:#fbbf24; border-color:#d97706; }
+.rd.kdo { background:#4ade80; border-color:#16a34a; }
+.pc { padding:4px 12px; font-weight:500; }
+.pc.d { background:#dbeafe; border-color:#93c5fd; color:#1e3a8a; }
+.pc.l { background:#fef3c7; border-color:#fcd34d; color:#78350f; }
+.offrow .pc.d, .daytable tr.offrow .pc.d { background:#dbeafe; }
+.offrow .pc.l, .daytable tr.offrow .pc.l { background:#fef3c7; }
+.rlegend .hint { flex-basis:100%; }

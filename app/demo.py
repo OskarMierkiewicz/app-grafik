@@ -16,7 +16,7 @@ from . import law, rules, solver
 from .db import SessionLocal, init_db
 from .models import Schedule, ScheduleEdit, Submission, Swap, User, UserAccount
 from .solver import calendar_info, parse_month
-from .xlsx_io import make_form, write_schedule
+from .xlsx_io import write_schedule
 
 FIRST = ["Jan", "Anna", "Piotr", "Maria", "Tomasz", "Katarzyna", "Michał", "Agnieszka", "Paweł", "Ewa",
          "Marcin", "Joanna", "Łukasz", "Magdalena", "Krzysztof", "Monika", "Adam", "Natalia", "Rafał", "Zofia"]
@@ -56,29 +56,22 @@ def trim_demo_users(db, keep):
 
 
 def export_example(db, month, users, out):
-    """Zapisuje przykład do folderu: pliki dyspozycji (dla użytkowników i dla admina), grafik i opis osób."""
+    """Zapisuje przykład do folderu: grafik (admin i użytkownicy) i opis osób."""
     year, mon = parse_month(month)
     ndays, off, _ = calendar_info(year, mon)
-    per_user = os.path.join(out, "dyspozycje_uzytkownikow")  # <login>/RRRR-MM.xlsx: tak wgrywa użytkownik
-    flat = os.path.join(out, "dyspozycje_dla_admina")  # <login>.xlsx: do hurtowego wgrania w panelu admina
-    os.makedirs(flat, exist_ok=True)
+    os.makedirs(out, exist_ok=True)
     persons, avail, rows = [], [], []
     for u in users:
         sub = db.scalar(select(Submission).where(Submission.user_id == u.id, Submission.month == month))
         av = {int(d): v for d, v in sub.avail.items()}
         login = u.account.login
-        data = make_form(month, u.first_name, u.last_name, sub.min_h, sub.max_h, av, sub.other_hours)
-        os.makedirs(os.path.join(per_user, login), exist_ok=True)
-        for path in (os.path.join(per_user, login, f"{month}.xlsx"), os.path.join(flat, f"{login}.xlsx")):
-            with open(path, "wb") as fh:
-                fh.write(data)
         mn = sub.min_h if sub.min_h is not None else u.min_h
         mx = sub.max_h if sub.max_h is not None else u.max_h
         mn, mx, note = law.apply_limit(month, u.only_job, sub.other_hours, mx, mn)
         persons.append(solver.Person(u.id, u.full_name, u.can_drive, u.can_lead, mn, mx, u.saldo, note))
         avail.append(av)
         rows.append([login, u.full_name, "kierowca + kierownik" if u.can_drive else "tylko kierownik",
-                     f"{mn}-{mx}", "własne (z pliku)" if sub.min_h is not None else "domyślne z bazy",
+                     f"{mn}-{mx}", "własne (z dyspozycji)" if sub.min_h is not None else "domyślne z bazy",
                      "tak" if u.only_job else f"nie ({sub.other_hours} h gdzie indziej)"])
     pre = solver.precheck(persons, avail, ndays)
     assign, meta = solver.solve(persons, avail, ndays, off, 30)

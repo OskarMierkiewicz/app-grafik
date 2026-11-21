@@ -12,7 +12,7 @@
 <div class="alert {{ 'err' if lock else 'ok' }}">
   {% if lock %}
     <b>Składanie dyspozycji zablokowane:</b> {{ lock }}.
-    {% if not principal.is_admin %}Jeśli musisz coś zmienić, napisz do administratora: może wgrać Twój plik mimo blokady. Dyspozycje na kolejny miesiąc możesz złożyć już teraz (zmień miesiąc u góry).{% endif %}
+    {% if not principal.is_admin %}Jeśli musisz coś zmienić, napisz do administratora: może poprawić Twoją dyspozycję mimo blokady. Dyspozycje na kolejny miesiąc możesz złożyć już teraz (zmień miesiąc u góry).{% endif %}
   {% else %}
     Dyspozycję na {{ month }} możesz składać i podmieniać <b>do {{ deadline.strftime('%d.%m.%Y') }}</b> (włącznie).
     Od następnego dnia jest blokada, a także wcześniej, jeśli administrator wygeneruje grafik.
@@ -23,40 +23,108 @@
 <p><a class="btn primary" href="/schedules/{{ published.id }}">Zobacz grafik na {{ month }}</a></p>
 {% endif %}
 
-<div class="cols">
-<div class="stack">
-{% if principal.user %}
-<section>
+{% if principal.is_admin %}
+<section class="mine">
+  <h2>Dyspozycja wybranej osoby</h2>
+  <form method="get" action="/dyspozycje" class="row">
+    <input type="hidden" name="month" value="{{ month }}">
+    <label>Osoba
+      <select name="uid" onchange="this.form.submit()">
+        <option value="">— wybierz —</option>
+        {% for u, s in rows %}<option value="{{ u.id }}" {{ 'selected' if target and target.id == u.id }}>{{ u.full_name }}{{ ' ✓' if s }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="mp-hide-js">Pokaż</button>
+  </form>
+{% elif principal.user %}
+<section class="mine">
   <h2>Moja dyspozycja</h2>
-  {% if mine %}
-    <p class="ok-text">✓ Masz złożoną dyspozycję na {{ month }} ({{ mine.avail|length }} dni dostępności,
-      ostatnia zmiana {{ mine.updated_at|localdt('%d.%m.%Y %H:%M') }}).</p>
+{% endif %}
+{% if target %}
+  {% if tsub %}
+    <p class="ok-text">✓ {{ 'Dyspozycja złożona' if principal.is_admin else 'Masz złożoną dyspozycję' }} na {{ month }} ({{ tsub.avail|length }} dni dostępności,
+      ostatnia zmiana {{ tsub.updated_at|localdt('%d.%m.%Y %H:%M') }}).</p>
   {% else %}
-    <p>Nie złożyłeś jeszcze dyspozycji na {{ month }}.</p>
+    <p>{{ 'Brak dyspozycji tej osoby' if principal.is_admin else 'Nie złożyłeś jeszcze dyspozycji' }} na {{ month }}.</p>
   {% endif %}
   {% if result %}<div class="alert {{ 'ok' if result.ok else 'err' }}">{{ result.msg }}</div>{% endif %}
-  <div class="row">
-    <a class="btn" href="/moj-formularz?month={{ month }}">Pobierz mój formularz ({{ month }}.xlsx)</a>
-  </div>
-  {% if not lock %}
-  <form method="post" action="/moja-dyspozycja" enctype="multipart/form-data" class="row">
-    <input type="file" name="file" accept=".xlsx" required>
-    <button class="primary">Wgraj plik</button>
+  {% if can_edit %}
+  <form method="post" action="/moja-dyspozycja/kalendarz" id="calform">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="uid" value="{{ target.id }}">
+
+    <div class="legend">
+      <span class="lg"><i class="chip D">D</i> dzień 7–19</span>
+      <span class="lg"><i class="chip N">N</i> noc 19–7</span>
+      <span class="lg"><i class="chip DN">DN</i> doba 7–7</span>
+      <span class="lg"><i class="chip off"></i> weekend / święto</span>
+    </div>
+    <p class="hint">Kliknij dzień, aby zmienić: <b>D</b> → <b>N</b> → <b>DN</b> → pusty. Pusty dzień = jesteś niedostępny.</p>
+
+    <div class="row cal-tools">
+      <label>Szybkie zaznaczanie:
+        <select id="calkind"><option value="D">D</option><option value="N">N</option><option value="DN" selected>DN</option></select>
+      </label>
+      <button type="button" data-set="off">Weekendy i święta</button>
+      <button type="button" data-set="work">Dni robocze</button>
+      <button type="button" data-set="all">Cały miesiąc</button>
+      <button type="button" data-set="clear">Wyczyść</button>
+      <span class="hint" id="calcount"></span>
+    </div>
+    <div class="cal">
+      {% for n in cal.names %}<div class="cal-h">{{ n }}</div>{% endfor %}
+      {% for _ in range(cal.lead) %}<div></div>{% endfor %}
+      {% for c in cal.days %}
+      {% set v = tsub.avail.get(c.d|string, '') if tsub else '' %}
+      <button type="button" class="cal-d{{ ' off' if c.off }}" data-v="{{ v }}" data-off="{{ 1 if c.off else 0 }}" title="{{ c.hol }}">
+        <span class="cal-n">{{ c.d }}</span><span class="cal-v">{{ v }}</span>
+        {% if c.hol %}<span class="cal-hol">{{ c.hol }}</span>{% endif %}
+        <input type="hidden" name="day_{{ c.d }}" value="{{ v }}">
+      </button>
+      {% endfor %}
+    </div>
+    <div class="row">
+      <label>Min godzin w miesiącu <input type="number" name="min_h" min="0" max="744" step="12" placeholder="domyślnie {{ target.min_h }}" value="{{ tsub.min_h if tsub and tsub.min_h is not none else '' }}"></label>
+      <label>Max godzin w miesiącu <input type="number" name="max_h" min="0" max="744" step="12" placeholder="domyślnie {{ target.max_h }}" value="{{ tsub.max_h if tsub and tsub.max_h is not none else '' }}"></label>
+      {% if not target.only_job %}
+      <label>Godziny w innych miejscach <input type="number" name="other_hours" min="0" max="999" value="{{ tsub.other_hours if tsub and tsub.other_hours is not none else '' }}"></label>
+      {% endif %}
+    </div>
+    <p class="hint">Min/max liczy się w pełnych zmianach: 12, 24, 36, 48… (strzałki w polu skaczą co 12 h). Puste = wartości domyślne z konta. Ponowne zapisanie zastępuje poprzednią dyspozycję.</p>
+    <button class="primary">Zapisz dyspozycję</button>
   </form>
-  <p class="hint">Plik musi nazywać się <b>RRRR-MM.xlsx</b> (np. <code>{{ month }}.xlsx</code>), bo z nazwy wiadomo, którego miesiąca
-    dotyczy. Pobrany formularz ma już poprawną nazwę oraz Twoje imię i nazwisko. Ponowne wgranie zastępuje poprzednią dyspozycję.</p>
+  <script>
+  (function () {
+    var ORDER = ["D", "N", "DN", ""], f = document.getElementById("calform");
+    function set(b, v) { b.dataset.v = v; b.querySelector(".cal-v").textContent = v; b.querySelector("input").value = v; }
+    function count() { document.getElementById("calcount").textContent = f.querySelectorAll('.cal-d:not([data-v=""])').length + " dni zaznaczonych"; }
+    f.querySelectorAll(".cal-d").forEach(function (b) {
+      b.addEventListener("click", function () { set(b, ORDER[(ORDER.indexOf(b.dataset.v) + 1) % 4]); count(); });
+    });
+    f.querySelectorAll("[data-set]").forEach(function (t) {
+      t.addEventListener("click", function () {
+        var kind = document.getElementById("calkind").value, how = t.dataset.set;
+        f.querySelectorAll(".cal-d").forEach(function (b) {
+          var off = b.dataset.off === "1";
+          if (how === "clear") set(b, "");
+          else if (how === "all" || (how === "off" && off) || (how === "work" && !off)) set(b, kind);
+        });
+        count();
+      });
+    });
+    count();
+  })();
+  </script>
+  {% elif target %}
+  <div class="alert err">Składanie dyspozycji jest zablokowane (patrz wyżej). Zmianę zgłoś administratorowi.</div>
   {% endif %}
-</section>
+{% elif principal.is_admin %}
+  <p class="hint">Wybierz osobę, aby wypełnić lub poprawić jej dyspozycję (administrator może to robić także po terminie).</p>
 {% endif %}
+{% if principal.is_admin or principal.user %}</section>{% endif %}
 
-{% if principal.is_admin %}
-<section>
-  <h2>Wgrywanie plików</h2>
-  <p>Jako administrator wgrywasz pliki (także hurtem i mimo blokady terminu) w panelu administratora.</p>
-  <a class="btn primary" href="/admin?month={{ month }}">Panel admina: wgraj dyspozycje na {{ month }}</a>
-</section>
-{% endif %}
-
+<div class="cols">
+<div class="stack">
 <section class="stats">
   <h2>📊 Statystyki: {{ stats.month_name }}</h2>
   <div class="stat">

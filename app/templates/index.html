@@ -6,36 +6,23 @@
 <form method="get" action="/admin" class="row">
   <span class="mp-label">Miesiąc</span> {{ month_picker(month, marks) }}
   <button class="mp-hide-js">Pokaż</button>
-  <a class="btn" href="/formularz?month={{ month }}">Pobierz pusty formularz ({{ month }})</a>
 </form>
 
 <section>
-  <h2>Wgraj wypełnione formularze</h2>
-  <form method="post" action="/upload" enctype="multipart/form-data" class="row">
-    <input type="hidden" name="month" value="{{ month }}">
-    <input type="file" name="files" accept=".xlsx" multiple required>
-    <button>Wgraj</button>
-  </form>
-  <p class="hint">Rola (kierowca / kierownik) i domyślne min/max godzin pochodzą z bazy użytkowników.
-    Puste min/max w pliku = wartości domyślne. Ponowne wgranie pliku tej samej osoby zastępuje poprzednią dyspozycję.</p>
-  {% if results %}
-  <ul class="results">
-    {% for r in results %}
-    <li class="{{ 'ok' if r.ok else 'err' }}"><b>{{ r.file }}</b>: {{ r.msg }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+  <h2>Dyspozycje wprowadza się w aplikacji</h2>
+  <p>Każdy składa własną w zakładce <b>Dyspozycje</b>. Możesz też wypełnić lub poprawić dyspozycję dowolnej osoby (także po terminie).</p>
+  <a class="btn primary" href="/dyspozycje?month={{ month }}">Dyspozycje na {{ month }}</a>
 </section>
 
 <section>
   <h2>Złożone dyspozycje ({{ subs|length }})</h2>
   {% if subs %}
   <table>
-    <tr><th>Osoba</th><th>Rola</th><th>Min–max h</th><th>Inne miejsca h</th><th>Dni dostępności</th><th>Plik</th><th></th></tr>
+    <tr><th>Osoba</th><th>Rola</th><th>Min–max h</th><th>Inne miejsca h</th><th>Dni dostępności</th><th>Źródło</th><th></th></tr>
     {% for s, u in subs %}
     <tr>
       <td>{{ u.full_name }}{% if not u.active %} <i>(nieaktywny)</i>{% endif %}</td>
-      <td>{{ (u|user_role)|role_full }}</td>
+      <td>{{ (u|user_role)|role_badge }}</td>
       <td>{{ s.min_h if s.min_h is not none else u.min_h }}–{{ s.max_h if s.max_h is not none else u.max_h }}
         {% if s.min_h is none and s.max_h is none %}<span class="hint">(domyślne)</span>{% endif %}</td>
       <td>{% if u.only_job %}<span class="hint">jedyne miejsce</span>{% else %}{{ s.other_hours if s.other_hours is not none else '⚠ brak' }}{% endif %}</td>

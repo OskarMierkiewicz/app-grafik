@@ -26,7 +26,7 @@
       <form method="post" action="/schedules/{{ sch.id }}/edit" style="display:inline">
         <input type="hidden" name="uid" value="{{ h.uid }}"><input type="hidden" name="day" value="{{ row.day.d }}">
         <input type="hidden" name="shift" value="{{ s }}"><input type="hidden" name="action" value="remove">
-        <span class="chip">{{ h.name }} <span title="{{ h.role|role_name }}">{{ h.role|role_icon }}</span>
+        <span class="chip">{{ h.role|role_dot }}{{ h.name }}
           <button class="link" title="Zdejmij z tej zmiany" onclick="return confirm('Zdjąć tę osobę ze zmiany?')">×</button></span>
       </form>
       {% endfor %}

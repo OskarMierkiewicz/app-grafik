@@ -87,7 +87,7 @@
     <th>h</th>{% if principal.is_admin %}<th>min</th><th>max</th>{% endif %}</tr>
   {% for p in rep.people %}
   <tr>
-    <td class="name">{{ p.name }} <span title="{{ p.role|role_name }}">{{ p.role|role_icon }}</span></td>
+    <td class="name">{{ p.role|role_dot }}{{ p.name }}</td>
     {% for x in rep.days %}{% set v = p.assign.get(x.d|string, '') %}<td class="c {{ v }}{{ ' offc' if x.off and not v }}">{{ v }}</td>{% endfor %}
     <td class="{{ 'warnc' if p.below_min and principal.is_admin }}">{{ p.hours }}</td>{% if principal.is_admin %}<td>{{ p.min_h }}</td><td>{{ p.max_h }}</td>{% endif %}
   </tr>
@@ -103,13 +103,13 @@
 {% include "_legend.html" %}
 
 <h2>Dzień po dniu</h2>
-<table>
+<table class="daytable">
   <tr><th>Dzień</th><th>D (7-19)</th><th>N (19-7)</th></tr>
   {% for x, row in rep.days|zip(rep.slots) %}
   <tr class="{{ 'offrow' if x.off }}">
     <td>{{ x.d }} {{ x.wd }}{% if x.hol %} <small>({{ x.hol }})</small>{% endif %}</td>
     {% for s in ['D','N'] %}
-    <td class="{{ 'gap' if row[s].problems }}">{{ row[s].people|join(', ')|role_tags }}{% if row[s].problems %} <b>BRAK: {{ row[s].problems|join(', ') }}</b>{% endif %}</td>
+    <td class="{{ 'gap' if row[s].problems }}">{{ row[s].people|role_chips(rep.seed, x.d, s) }}{% if row[s].problems %} <b>BRAK: {{ row[s].problems|join(', ') }}</b>{% endif %}</td>
     {% endfor %}
   </tr>
   {% endfor %}
@@ -121,7 +121,7 @@
   <tr><th>Osoba</th><th>Rola</th><th>Godziny</th><th>Min–max</th><th>Zmian</th><th>Dób</th><th>Nocy</th><th>Wolne/święta</th><th>Pkt</th><th>Oczekiwane</th><th>Saldo</th><th>Uwagi</th></tr>
   {% for p in rep.people %}
   <tr>
-    <td>{{ p.name }}</td><td>{{ p.role|role_full }}</td><td class="{{ 'warnc' if p.below_min }}">{{ p.hours }}</td><td>{{ p.min_h }}–{{ p.max_h }}</td>
+    <td>{{ p.name }}</td><td>{{ p.role|role_badge }}</td><td class="{{ 'warnc' if p.below_min }}">{{ p.hours }}</td><td>{{ p.min_h }}–{{ p.max_h }}</td>
     <td>{{ p.n }}</td><td>{{ p.doby }}</td><td>{{ p.nights }}</td><td>{{ p.offs }}</td><td>{{ p.b }}</td><td>{{ p.expected }}</td>
     <td>{{ p.saldo_old }} → {{ p.saldo_new }}</td><td>{{ p.notes|join('; ') }}</td>
   </tr>

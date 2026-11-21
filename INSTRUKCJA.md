@@ -30,7 +30,7 @@ Inni użytkownicy testowi mają login w stylu `imie.nazwisko` (np. `anna.szymans
 
 ## Co wypróbować
 - **Jako administrator:** zakładka **Panel admina** → wybierz miesiąc → **Generuj grafik** → obejrzyj wynik → **Opublikuj**.
-- **Jako użytkownik** (wyloguj się i zaloguj jako `jan.kowalski`): **Dyspozycje** (kto już złożył), **Grafiki** (opublikowany grafik), **Zamiany** (prośba o zamianę zmiany z kolegą).
+- **Jako użytkownik** (wyloguj się i zaloguj jako `jan.kowalski`): **Dyspozycje** (kliknij dni w kalendarzu: D, N lub DN, i zapisz), **Grafiki** (opublikowany grafik), **Zamiany** (prośba o zamianę zmiany z kolegą).
 
 ## Zatrzymanie i ponowne uruchomienie
 - **Zakończenie pracy:** kliknij **`STOP-WINDOWS.bat`**. Dane zostają zapisane.

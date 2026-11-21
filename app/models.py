@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
 
+STEP_H = 12  # min/max godzin zmieniają się co 12 h (jedna zmiana D albo N)
 DEFAULT_MIN_H = 96
 DEFAULT_MAX_H = 192
 

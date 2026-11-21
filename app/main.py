@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -21,8 +21,8 @@ from . import auth, law, roles, rules, solver, swaps
 from .auth import Principal, admin_required, login_required
 from .db import get_db, init_db
 from .migrate import migrate_legacy_passwords
-from .models import DEFAULT_MAX_H, DEFAULT_MIN_H, Schedule, ScheduleEdit, Submission, Swap, User, UserAccount
-from .xlsx_io import MAX_UPLOAD_BYTES, FormError, make_form, read_form, write_schedule
+from .models import DEFAULT_MAX_H, DEFAULT_MIN_H, STEP_H, Schedule, ScheduleEdit, Submission, Swap, User, UserAccount
+from .xlsx_io import write_schedule
 
 BASE = Path(__file__).parent
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -44,7 +44,7 @@ def _static_version() -> str:
 STATIC_V = _static_version()
 templates.env.globals["static"] = lambda name: f"/static/{name}?v={STATIC_V}"
 templates.env.filters.update(role_icon=roles.icon, role_name=roles.name, role_full=roles.full, role_tags=roles.tags,
-                             user_role=roles.user_code)
+                             user_role=roles.user_code, role_badge=roles.badge, role_chips=roles.chips, role_dot=roles.dot)
 
 
 @asynccontextmanager
@@ -96,11 +96,6 @@ def canon_month(month: str | None) -> str | None:
 
 def valid_month(month: str | None) -> str:
     return canon_month(month) or default_month()
-
-
-def read_upload(f: UploadFile) -> bytes:
-    """Czyta plik z limitem (czytamy o 1 bajt więcej, żeby read_form mógł odrzucić zbyt duży)."""
-    return f.file.read(MAX_UPLOAD_BYTES + 1)
 
 
 def localdt(value, fmt="%d.%m.%Y %H:%M"):
@@ -205,6 +200,10 @@ def account_email(request: Request, email: str = Form(""), db: Session = Depends
 # --------------------------------------------------------------------------
 # Zapis dyspozycji (wspólne dla użytkownika i administratora)
 # --------------------------------------------------------------------------
+class FormError(Exception):
+    pass
+
+
 def save_submission(db: Session, u: User, form: dict, filename: str, *, user_mode: bool = False) -> str:
     month = form["month"]
     if not u.active:
@@ -270,62 +269,78 @@ def month_stats(month: str, done: int, total: int) -> dict:
             "done": done, "total": total}
 
 
-def dyspozycje_ctx(db: Session, month: str, p: Principal, **extra):
+def dyspozycje_ctx(db: Session, month: str, p: Principal, uid: int | None = None, **extra):
     users = db.scalars(select(User).where(User.active).order_by(User.last_name, User.first_name)).all()
     subs = {s.user_id: s for s in db.scalars(select(Submission).where(Submission.month == month))}
     rows = [(u, subs.get(u.id)) for u in users]
     published = db.scalar(select(Schedule).where(Schedule.month == month, Schedule.published).limit(1))
     done = sum(1 for _, s in rows if s)
-    return {"month": month, "rows": rows, "done": done, "total": len(rows), "stats": month_stats(month, done, len(rows)),
+    y, m = solver.parse_month(month)
+    ndays, off, hol = solver.calendar_info(y, m)
+    cal = {"lead": dt.date(y, m, 1).weekday(), "names": solver.DAY_NAMES,
+           "days": [{"d": d, "off": d in off, "hol": hol.get(d, "")} for d in range(1, ndays + 1)]}
+    # kogo dyspozycję edytuje kalendarz: zwykły użytkownik zawsze siebie, administrator wskazaną osobę
+    target = p.user if not p.is_admin else (db.get(User, uid) if uid else None)
+    if target is not None and not target.active:
+        target = None
+    return {"cal": cal, "target": target, "tsub": subs.get(target.id) if target else None,
+            "can_edit": bool(target) and (p.is_admin or not rules.lock_reason(db, month)), "month": month, "rows": rows, "done": done, "total": len(rows), "stats": month_stats(month, done, len(rows)),
             "published": published, "mine": subs.get(p.user.id) if p.user else None,
             "deadline": rules.deadline_for(month), "lock": rules.lock_reason(db, month), "marks": month_marks(db), **extra}
 
 
 @app.get("/dyspozycje", response_class=HTMLResponse)
-def dyspozycje(request: Request, month: str | None = None, msg: str | None = None,
+def dyspozycje(request: Request, month: str | None = None, msg: str | None = None, uid: int | None = None,
                db: Session = Depends(get_db), p: Principal = Depends(login_required)):
-    return render(request, "dyspozycje.html", **dyspozycje_ctx(db, valid_month(month or open_month()), p, msg=msg))
+    return render(request, "dyspozycje.html", **dyspozycje_ctx(db, valid_month(month or open_month()), p, uid, msg=msg))
 
 
-@app.get("/moj-formularz")
-def my_form(month: str, p: Principal = Depends(login_required)):
-    """Szablon dla jednego użytkownika, z jego imieniem i nazwiskiem; plik nazywa się RRRR-MM.xlsx."""
-    month = canon_month(month)
-    if not month:
-        raise HTTPException(400, "Zły format miesiąca (oczekiwane RRRR-MM)")
-    data = make_form(month, p.user.first_name if p.user else "", p.user.last_name if p.user else "")
-    return Response(data, media_type=XLSX, headers={"Content-Disposition": f'attachment; filename="{month}.xlsx"'})
+def _opt_int(raw: str | None, label: str) -> int | None:
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    if not re.fullmatch(r"\d{1,4}", raw):
+        raise FormError(f"{label}: podaj liczbę całkowitą (godziny)")
+    return int(raw)
 
 
-@app.post("/moja-dyspozycja", response_class=HTMLResponse)
-def my_upload(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db),
-              p: Principal = Depends(login_required)):
+@app.post("/moja-dyspozycja/kalendarz", response_class=HTMLResponse)
+async def my_calendar(request: Request, db: Session = Depends(get_db), p: Principal = Depends(login_required)):
+    """Zapis dyspozycji z kalendarza D/N/DN. Użytkownik zapisuje swoją, administrator dowolnej osoby (także po terminie)."""
+    f = await request.form()
     if p.is_admin:
-        raise HTTPException(403, "Administrator wgrywa pliki w panelu administratora")
-    u = p.user
-    fname = os.path.basename(file.filename or "").strip()
-    month, result = default_month(), None
+        u = db.get(User, int(f["uid"])) if str(f.get("uid") or "").isdigit() else None
+        if u is None:
+            raise HTTPException(400, "Wybierz osobę")
+    elif p.user:
+        u = p.user
+    else:
+        raise HTTPException(403)
+    month, result = valid_month(str(f.get("month") or "")), None
     try:
-        m = re.fullmatch(r"(\d{4})-(\d{2})\.xlsx", fname, re.I)
-        if not m:
-            raise FormError("nazwa pliku musi mieć postać RRRR-MM.xlsx (np. 2027-01.xlsx), czyli miesiąc, którego dotyczy dyspozycja")
-        month = f"{m[1]}-{m[2]}"
-        try:
-            solver.parse_month(month)
-        except ValueError as e:
-            raise FormError(str(e))
-        form = read_form(read_upload(file))
-        if form["month"] != month:
-            raise FormError(f"nazwa pliku wskazuje miesiąc {month}, a w środku pliku jest {form['month']}")
-        if norm(f"{form['first']} {form['last']}") != norm(u.full_name):
-            raise FormError(f"w pliku jest „{form['first']} {form['last']}”, a jesteś zalogowany jako „{u.full_name}”. "
-                            "Pobierz swój formularz przyciskiem „Pobierz mój formularz”")
-        note = save_submission(db, u, form, fname, user_mode=True)
+        y, m = solver.parse_month(month)
+        ndays = solver.calendar_info(y, m)[0]
+        avail = {}
+        for d in range(1, ndays + 1):
+            v = str(f.get(f"day_{d}") or "").strip().upper()
+            if v not in ("", "D", "N", "DN"):
+                raise FormError(f"dzień {d}: niepoprawna wartość (D / N / DN)")
+            if v:
+                avail[d] = v
+        mn, mx = _opt_int(f.get("min_h"), "min godzin"), _opt_int(f.get("max_h"), "max godzin")
+        for label, v in (("min godzin", mn), ("max godzin", mx)):
+            if v is not None and v % STEP_H:
+                raise FormError(f"{label}: {v} h to nie pełne zmiany. Podaj wielokrotność {STEP_H} (12, 24, 36, 48…)")
+        oh = _opt_int(f.get("other_hours"), "godziny w innych miejscach")
+        if u.only_job:
+            oh = None  # pole ukryte dla osób z jedynym miejscem pracy
+        form = {"month": month, "min_h": mn, "max_h": mx, "other_hours": oh, "avail": avail}
+        note = save_submission(db, u, form, "kalendarz (admin)" if p.is_admin else "kalendarz", user_mode=not p.is_admin)
         result = {"ok": True, "msg": f"Zapisano dyspozycję na {month}: {note}"}
-    except FormError as e:
+    except (FormError, ValueError) as e:
         db.rollback()
-        result = {"ok": False, "msg": f"{fname or 'plik'}: {e}"}
-    return render(request, "dyspozycje.html", **dyspozycje_ctx(db, month, p, result=result))
+        result = {"ok": False, "msg": str(e)}
+    return render(request, "dyspozycje.html", **dyspozycje_ctx(db, month, p, u.id, result=result))
 
 
 @app.get("/grafiki", response_class=HTMLResponse)
@@ -389,37 +404,6 @@ def index(request: Request, month: str | None = None, msg: str | None = None, db
     return render(request, "index.html", **index_ctx(db, month or default_month(), msg=msg))
 
 
-@app.get("/formularz")
-def formularz(month: str, p: Principal = Depends(admin_required)):
-    month = canon_month(month)
-    if not month:
-        raise HTTPException(400, "Zły format miesiąca (oczekiwane RRRR-MM)")
-    data = make_form(month)
-    return Response(data, media_type=XLSX, headers={"Content-Disposition": f'attachment; filename="dyspozycja_{month}.xlsx"'})
-
-
-@app.post("/upload", response_class=HTMLResponse)
-def upload(request: Request, month: str = Form(...), files: list[UploadFile] = File(...),
-           db: Session = Depends(get_db), p: Principal = Depends(admin_required)):
-    users = {norm(u.full_name): u for u in db.scalars(select(User))}
-    results, last_month = [], month
-    for f in files:
-        if not f.filename:
-            continue
-        try:
-            form = read_form(read_upload(f))
-            u = users.get(norm(f"{form['first']} {form['last']}"))
-            if u is None:
-                raise FormError(f"nie ma użytkownika „{form['first']} {form['last']}” w bazie (dodaj go w zakładce Użytkownicy)")
-            note = save_submission(db, u, form, f.filename)
-            last_month = form["month"]
-            results.append({"file": f.filename, "ok": True, "msg": f"{u.full_name}: {note}"})
-        except FormError as e:
-            db.rollback()
-            results.append({"file": f.filename, "ok": False, "msg": str(e)})
-    return render(request, "index.html", **index_ctx(db, last_month, results=results))
-
-
 @app.post("/submissions/{sid}/delete")
 def delete_submission(sid: int, db: Session = Depends(get_db), p: Principal = Depends(admin_required)):
     sub = db.get(Submission, sid)
@@ -454,7 +438,7 @@ def generate(request: Request, month: str = Form(...), czas: int = Form(30), db:
         try:
             mn, mx, law_note = law.apply_limit(month, u.only_job, sub.other_hours, mx, mn)
         except ValueError:
-            errors.append(f"{u.full_name}: only_job=false, ale brak godzin w innych miejscach (wgraj formularz ponownie)")
+            errors.append(f"{u.full_name}: only_job=false, ale brak godzin w innych miejscach (admin: uzupełnij w dyspozycji tej osoby)")
             continue
         persons.append(solver.Person(u.id, u.full_name, u.can_drive, u.can_lead, mn, mx, u.saldo, law_note))
         avail.append({int(d): v for d, v in sub.avail.items()})
@@ -543,6 +527,8 @@ def validate_user(first, last, drive, lead, mn, mx):
         return "Użytkownik musi być kierowcą lub kierownikiem."
     if mn < 0 or mn > mx:
         return "Min godzin musi być ≥ 0 i ≤ max godzin."
+    if mn % STEP_H or mx % STEP_H:
+        return f"Min i max godzin muszą być wielokrotnością {STEP_H} (12, 24, 36, 48…)."
     return None
 
 

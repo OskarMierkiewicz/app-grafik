@@ -17,8 +17,8 @@
     <label><input type="checkbox" name="can_drive"> kierowca</label>
     <label><input type="checkbox" name="can_lead" checked> kierownik</label>
     <label title="Zaznaczone = to jedyne miejsce pracy; odznacz, jeśli osoba pracuje też gdzie indziej"><input type="checkbox" name="only_job" checked> jedyne miejsce pracy</label>
-    <label>min h <input type="number" name="min_h" value="{{ def_min }}" min="0" style="width:5em"></label>
-    <label>max h <input type="number" name="max_h" value="{{ def_max }}" min="0" style="width:5em"></label>
+    <label>min h <input type="number" name="min_h" value="{{ def_min }}" min="0" step="12" style="width:5em"></label>
+    <label>max h <input type="number" name="max_h" value="{{ def_max }}" min="0" step="12" style="width:5em"></label>
     <label title="Puste = imię.nazwisko bez polskich znaków">login <input name="login" pattern="[a-z0-9._\-]{3,80}" placeholder="auto z imienia i nazwiska" style="width:12em"></label>
     <label>e-mail <input type="email" name="email" placeholder="do kontaktu" style="width:13em"></label>
     <label title="Min. 8 znaków. Puste = osoba nie może się zalogować, dopóki nie ustawisz hasła">hasło <input type="text" name="password" minlength="8" autocomplete="off" placeholder="min. 8 znaków"></label>
@@ -38,8 +38,8 @@
       <td><input form="f{{ u.id }}" type="checkbox" name="can_drive" {{ 'checked' if u.can_drive }}></td>
       <td><input form="f{{ u.id }}" type="checkbox" name="can_lead" {{ 'checked' if u.can_lead }}></td>
       <td><input form="f{{ u.id }}" type="checkbox" name="only_job" {{ 'checked' if u.only_job }}></td>
-      <td><input form="f{{ u.id }}" type="number" name="min_h" value="{{ u.min_h }}" min="0" style="width:5em"></td>
-      <td><input form="f{{ u.id }}" type="number" name="max_h" value="{{ u.max_h }}" min="0" style="width:5em"></td>
+      <td><input form="f{{ u.id }}" type="number" name="min_h" value="{{ u.min_h }}" min="0" step="12" style="width:5em"></td>
+      <td><input form="f{{ u.id }}" type="number" name="max_h" value="{{ u.max_h }}" min="0" step="12" style="width:5em"></td>
       <td><input form="f{{ u.id }}" type="number" step="0.1" name="saldo" value="{{ u.saldo }}" style="width:5.5em"></td>
       <td><input form="f{{ u.id }}" type="checkbox" name="active" {{ 'checked' if u.active }}></td>
       <td><input form="f{{ u.id }}" name="login" value="{{ u.account.login if u.account else '' }}" pattern="[a-z0-9._\-]{3,80}" style="width:11em">

@@ -14,7 +14,7 @@ Aplikacja: http://localhost:8000 (port bazy nie jest wystawiony na zewnątrz). D
 
 Dane demo: `docker compose exec web python -m app.demo --month 2027-01 --users 12`
 (użytkownicy demo: login `imię.nazwisko`, np. `jan.kowalski`, hasło `demo12345`).
-Gotowy przykład na 12 osobach (pliki dyspozycji i wygenerowany grafik w Excelu) jest w folderze `przyklad/`, opis w `przyklad/OPIS.md`.
+Gotowy przykład na 12 osobach (wygenerowany grafik w Excelu) jest w folderze `przyklad/`, opis w `przyklad/OPIS.md`.
 Nowy zestaw: `python -m app.demo --month 2027-01 --users 12 --export przyklad` (na pustej/osobnej bazie).
 Po wcześniejszym uruchomieniu z większą liczbą osób: `python -m app.demo --month 2026-12 --users 12 --trim` usuwa nadmiarowe osoby demo
 (z kontami i dyspozycjami; rozpoznaje je po imieniu i nazwisku, więc prawdziwa osoba o takich danych też zostałaby usunięta).
@@ -33,18 +33,18 @@ Wybieracz jest własny (`app/static/monthpicker.js`, bez zewnętrznych bibliotek
 
 ## Logowanie i role
 - **Administrator**: login `ADMIN_LOGIN` (domyślnie `admin`), hasło `ADMIN_PASSWORD` z `.env`. Widzi wszystko, zarządza
-  użytkownikami, wgrywa pliki za wszystkich, generuje i publikuje grafiki, wprowadza zamiany. Bez `ADMIN_PASSWORD` aplikacja
+  użytkownikami, wypełnia dyspozycje za wszystkich, generuje i publikuje grafiki, wprowadza zamiany. Bez `ADMIN_PASSWORD` aplikacja
   wypisze w logu losowe hasło tymczasowe (`docker compose logs web`).
 - **Użytkownik** (każda osoba z tabeli `users`, która ma konto z hasłem w `user_accounts`): login z tabeli kont (domyślnie
   `imię.nazwisko` małymi literami bez polskich znaków), hasło ustawia administrator (użytkownik zmienia je i swój e-mail w „Moje konto"). Użytkownik widzi opublikowane grafiki (bieżący i poprzednie),
-  listę, kto złożył dyspozycję, wgrywa własny plik i prosi o zamiany. Osoba bez hasła nie może się zalogować.
+  listę, kto złożył dyspozycję, zaznacza w kalendarzu swoje dyspozycje i prosi o zamiany. Osoba bez hasła nie może się zalogować.
 - `SECRET_KEY` podpisuje sesje (długi losowy ciąg); bez niego wszyscy są wylogowani po restarcie. Za HTTPS ustaw `SESSION_HTTPS_ONLY=1`.
   Po 5 nieudanych próbach logowania jest 5-minutowa blokada.
 
 ## Dyspozycje i termin
-Użytkownik pobiera **własny szablon** (z imieniem i nazwiskiem; plik nazywa się `RRRR-MM.xlsx`), wypełnia i wgrywa plik o nazwie
-`RRRR-MM.xlsx` (np. `2027-01.xlsx`): z nazwy wiadomo, którego miesiąca dotyczy (musi zgadzać się z miesiącem w środku pliku i z imieniem
-zalogowanej osoby). Dyspozycję na miesiąc M można składać i podmieniać **do 10. dnia miesiąca poprzedzającego M** (włącznie, zmienna
+Użytkownik w zakładce **Dyspozycje** zaznacza w **kalendarzu** wybranego miesiąca, kiedy może pracować: klik zmienia dzień D → N → DN → pusty
+(pusty = niedostępny). Są szybkie przyciski (weekendy i święta, dni robocze, cały miesiąc) oraz opcjonalne pola min/max godzin (puste = domyślne z konta).
+Dyspozycję na miesiąc M można składać i podmieniać **do 10. dnia miesiąca poprzedzającego M** (włącznie, zmienna
 `SUBMISSION_DEADLINE_DAY`); od 11. jest blokada. Blokada działa też wcześniej, **gdy administrator wygenerował już grafik na M**
 (żeby ponownie otworzyć zapisy, usuń roboczy grafik). Administrator nie podlega blokadzie.
 
@@ -70,7 +70,7 @@ a pod nią lista z **+** (dodaj osobę, także spoza grafiku, np. bez dyspozycji
 
 ## Użytkownicy (tabela `users`)
 imię, nazwisko, `can_drive` (kierowca, domyślnie false), `can_lead` (kierownik, domyślnie true),
-`min_h`, `max_h` (domyślne limity godzin), `saldo`, `active`, `only_job`. Zarządzane w zakładce **Użytkownicy**.
+`min_h`, `max_h` (domyślne limity godzin, zawsze wielokrotność 12 h), `saldo`, `active`, `only_job`. Zarządzane w zakładce **Użytkownicy**.
 
 ## Import użytkowników z pliku CSV
 ```
@@ -103,20 +103,17 @@ Login domyślnie powstaje z imienia i nazwiska (`lukasz.zak`), ale admin może g
 w `users.password_hash` są przy starcie automatycznie przenoszone do `user_accounts`.
 
 ## Przepływ pracy
-1. **Grafik → Pobierz pusty formularz** na miesiąc i roześlij.
-2. Osoba wpisuje imię, nazwisko, opcjonalnie min/max godzin i dla każdego dnia D / N / DN / puste.
-   Puste min/max = domyślne z bazy. Rola pochodzi z bazy.
-3. Wgrywasz pliki (wiele naraz). Każdy plik jest sprawdzany: nieznana osoba, zła wartość, min > max, zły plik.
-   Ponowne wgranie pliku tej samej osoby zastępuje poprzednią dyspozycję.
-4. **Generuj grafik** → podgląd (siatka, obsada dzień po dniu, braki na czerwono, podsumowanie), pobranie Excela.
-5. **Zatwierdź** zapisuje saldo uciążliwości do bazy (raz na miesiąc), żeby kolejny miesiąc był sprawiedliwszy.
+1. Osoby zaznaczają dyspozycje w aplikacji (kalendarz D / N / DN, opcjonalnie min/max godzin). Puste min/max = domyślne z bazy. Rola pochodzi z bazy.
+   Ponowny zapis zastępuje poprzednią dyspozycję. Administrator może wypełnić dyspozycję dowolnej osoby (także po terminie).
+2. **Generuj grafik** → podgląd (siatka, obsada dzień po dniu, braki na czerwono, podsumowanie), pobranie Excela.
+3. **Zatwierdź** zapisuje saldo uciążliwości do bazy (raz na miesiąc), żeby kolejny miesiąc był sprawiedliwszy.
 
 ## Limit ustawowy dla osób pracujących w kilku miejscach (`only_job`)
 Nowelizacja ustawy o świadczeniach opieki zdrowotnej (Sejm przyjął poprawki Senatu 19.11.2026, czeka na podpis
 prezydenta) ma ograniczać łączny czas pracy medyka u wszystkich pracodawców do 2 etatów (wg prasy: 320 h).
-W aplikacji: `users.only_job` (domyślnie true). Dla `only_job=false` osoba **musi** w formularzu podać „Godziny w innych
+W aplikacji: `users.only_job` (domyślnie true). Dla `only_job=false` osoba **musi** w dyspozycji podać „Godziny w innych
 miejscach pracy” (0 = wcale), a jej max h w grafiku to `min(max h, 320 − godziny gdzie indziej)`. Brak deklaracji
-albo godziny przy `only_job=true` = plik odrzucony. Zmienne środowiskowe (`app/law.py`):
+albo godziny przy `only_job=true` = dyspozycja odrzucona. Zmienne środowiskowe (`app/law.py`):
 `LAW_ENABLED` (1/0), `LAW_EFFECTIVE_FROM` (domyślnie `2027-01`), `LAW_TOTAL_MAX_H` (domyślnie `320`).
 Szczegóły ustawy (czy 320 h jest miesięczne, dyżury, czy objęte są ZRM) są niepotwierdzone w tekście: zweryfikuj z prawnikiem.
 

@@ -106,7 +106,7 @@
     <input type="hidden" name="month" value="{{ month }}">
     <label>Z kim
       <select name="partner" required><option value="">wybierz osobę…</option>
-        {% for pp in people if pp.uid != principal.user.id %}<option value="{{ pp.uid }}" {{ 'selected' if partner == pp.uid }}>{{ pp.name }} ({{ pp.role|role_name }} {{ pp.role|role_icon }})</option>{% endfor %}</select></label>
+        {% for pp in people if pp.uid != principal.user.id %}<option value="{{ pp.uid }}" {{ 'selected' if partner == pp.uid }}>{{ pp.name }} ({{ pp.role|role_name }})</option>{% endfor %}</select></label>
     <button>Dalej: wybierz zmiany</button>
   </form>
   {% if partner %}

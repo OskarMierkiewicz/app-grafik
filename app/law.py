@@ -15,9 +15,14 @@ potwierdzone w tekście ustawy. Dlatego wszystko jest konfigurowalne zmiennymi �
 """
 import os
 
+from .models import STEP_H
+
 
 def _enabled():
     return os.getenv("LAW_ENABLED", "1").strip().lower() not in ("0", "false", "no", "")
+
+
+from .models import STEP_H
 
 
 def total_max_h() -> int:
@@ -43,8 +48,10 @@ def apply_limit(month: str, only_job: bool, other_hours: int | None, max_h: int,
         return min_h, max_h, ""
     if other_hours is None:
         raise ValueError("brak godzin w innych miejscach")
-    room = max(0, total_max_h() - other_hours)
+    raw = max(0, total_max_h() - other_hours)
+    room = raw // STEP_H * STEP_H  # w pełnych zmianach po 12 h
     if room >= max_h:
         return min_h, max_h, ""
-    note = f"limit ustawowy: max {room} h ({total_max_h()} − {other_hours} h w innych miejscach)"
+    note = (f"limit ustawowy: max {room} h ({total_max_h()} − {other_hours} h w innych miejscach"
+            + (f" = {raw} h, w pełnych zmianach 12 h" if raw != room else "") + ")")
     return min(min_h, room), room, note
