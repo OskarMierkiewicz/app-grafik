@@ -12,7 +12,7 @@ import random
 from sqlalchemy import select
 
 from .auth import default_login, hash_password
-from . import law, solver
+from . import law, rules, solver
 from .db import SessionLocal, init_db
 from .models import Schedule, ScheduleEdit, Submission, Swap, User, UserAccount
 from .solver import calendar_info, parse_month
@@ -96,12 +96,15 @@ def export_example(db, month, users, out):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--month", required=True)
+    ap.add_argument("--month", required=True, help="RRRR-MM albo auto (miesiąc, na który zapisy są teraz otwarte)")
     ap.add_argument("--users", type=int, default=12)
     ap.add_argument("--export", metavar="FOLDER", help="zapisz pliki dyspozycji i gotowy grafik do folderu")
     ap.add_argument("--trim", action="store_true",
                     help="usuń osoby demo spoza pierwszych --users (np. po wcześniejszym uruchomieniu z 20 osobami)")
     a = ap.parse_args()
+    if a.month == "auto":
+        a.month = rules.open_month()
+        print(f"Miesiąc (auto): {a.month}")
     year, mon = parse_month(a.month)
     ndays, _, _ = calendar_info(year, mon)
     rng = random.Random(7)

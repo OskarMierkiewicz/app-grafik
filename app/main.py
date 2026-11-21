@@ -81,11 +81,8 @@ def default_month() -> str:
 
 
 def open_month() -> str:
-    """Miesiąc, na który zapisy są teraz otwarte: do 10. dnia (SUBMISSION_DEADLINE_DAY) jest to następny miesiąc,
-    od 11. dnia kolejny po nim (np. 21 listopada → styczeń, bo termin na grudzień minął 10 listopada)."""
-    t = rules.today()
-    idx = t.year * 12 + (t.month - 1) + (1 if t.day <= rules.deadline_day() else 2)
-    return f"{idx // 12}-{idx % 12 + 1:02d}"
+    """Miesiąc, na który zapisy są teraz otwarte (patrz rules.open_month)."""
+    return rules.open_month()
 
 
 def canon_month(month: str | None) -> str | None:

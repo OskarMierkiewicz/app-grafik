@@ -1,5 +1,7 @@
 # Grafik - Lux Med Wileńska 44 (web + baza w kontenerach)
 
+> **Chcesz tylko wypróbować na Windows?** Zobacz **[INSTRUKCJA.md](INSTRUKCJA.md)**: Docker Desktop, pobranie ZIP i dwukrotne kliknięcie `START-WINDOWS.bat`.
+
 1 karetka, zmiany D (7-19) i N (19-7), 2 osoby na zmianie, w tym min. 1 kierowca i min. 1 kierownik.
 Dwa kontenery: **web** (FastAPI + solver OR-Tools CP-SAT) i **db** (Postgres).
 
@@ -72,8 +74,8 @@ imię, nazwisko, `can_drive` (kierowca, domyślnie false), `can_lead` (kierownik
 
 ## Import użytkowników z pliku CSV
 ```
-docker compose exec -T web python -m app.import_users - --dry-run < przyklad/osoby.csv   # podgląd, nic nie zapisuje
-docker compose exec -T web python -m app.import_users - < przyklad/osoby.csv             # zapis
+docker compose exec -T web python -m app.import_users - --dry-run < przyklad/osoby_demo.csv   # podgląd, nic nie zapisuje
+docker compose exec -T web python -m app.import_users - < przyklad/osoby_demo.csv             # zapis
 ```
 (`-` = plik ze standardowego wejścia, `-T` jest potrzebne przy `<`; bez Dockera: `python -m app.import_users osoby.csv`.)
 Kolumny rozpoznawane po nagłówkach: `login`, `osoba` (Imię Nazwisko; albo osobno `imię` i `nazwisko`), `rola` (`kierownik`,

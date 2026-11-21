@@ -1,0 +1,13 @@
+login;osoba;rola;godziny min-max;jedyne miejsce pracy
+jan.kowalski;Jan Kowalski;kierowca + kierownik;96-144;nie
+anna.szymanski;Anna Szymański;kierowca + kierownik;84-192;tak
+piotr.krawczyk;Piotr Krawczyk;kierowca + kierownik;108-168;tak
+maria.nowak;Maria Nowak;kierownik;84-192;nie
+tomasz.wozniak;Tomasz Woźniak;kierowca + kierownik;108-168;tak
+katarzyna.piotrowski;Katarzyna Piotrowski;kierowca + kierownik;72-192;tak
+michal.wisniewski;Michał Wiśniewski;kierowca + kierownik;84-192;nie
+agnieszka.dabrowski;Agnieszka Dąbrowski;kierowca + kierownik;72-144;tak
+pawel.grabowski;Paweł Grabowski;kierownik;96-168;tak
+ewa.wojcik;Ewa Wójcik;kierowca + kierownik;96-192;nie
+marcin.kozlowski;Marcin Kozłowski;kierowca + kierownik;72-144;tak
+joanna.pawlowski;Joanna Pawłowski;kierowca + kierownik;72-192;tak

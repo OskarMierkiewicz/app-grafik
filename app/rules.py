@@ -40,3 +40,10 @@ def lock_reason(db: Session, month: str, on: dt.date | None = None) -> str | Non
     if on > dl:
         return f"termin minął ({dl.strftime('%d.%m.%Y')} włącznie); od {(dl + dt.timedelta(days=1)).strftime('%d.%m.%Y')} dyspozycji nie można zmieniać"
     return None
+
+
+def open_month() -> str:
+    """Miesiąc, na który zapisy są teraz otwarte: do SUBMISSION_DEADLINE_DAY następny miesiąc, potem kolejny po nim."""
+    t = today()
+    idx = t.year * 12 + (t.month - 1) + (1 if t.day <= deadline_day() else 2)
+    return f"{idx // 12}-{idx % 12 + 1:02d}"

@@ -6,3 +6,7 @@ __pycache__/
 .env
 !przyklad/**/*.xlsx
 *.env
+!ustawienia-lokalne.env
+.dane-demo-wczytane
+# prawdziwa lista osób nie może trafić do publicznego repozytorium (użyj przyklad/osoby_demo.csv)
+przyklad/osoby.csv

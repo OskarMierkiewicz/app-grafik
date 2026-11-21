@@ -1,0 +1,9 @@
+* text=auto
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+*.env text eol=lf
+.env.example text eol=lf
+Dockerfile text eol=lf
+*.png binary
+*.xlsx binary
